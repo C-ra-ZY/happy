@@ -12,6 +12,7 @@ import { projectPath } from "@/projectPath";
 import { systemPrompt } from "./utils/systemPrompt";
 import type { SandboxConfig } from "@/persistence";
 import { initializeSandbox, wrapCommand } from "@/sandbox/manager";
+import { restoreStdin } from "@/utils/restoreStdin";
 
 /**
  * Error thrown when the Claude process exits with a non-zero exit code.
@@ -185,8 +186,10 @@ export async function claudeLocal(opts: {
 
     // Spawn the process
     try {
-        // Start the interactive process
-        process.stdin.pause();
+        // Restore stdin state from any prior raw-mode/Ink usage: clears encoding,
+        // removes orphaned "data" listeners, disables raw mode, and pauses the
+        // stream. Complements the setBlocking fix below.
+        restoreStdin();
 
         // Force blocking I/O on the inherited stdin fd. Node leaves O_NONBLOCK
         // set after libuv-mode reads (which Ink and our drain helper both do

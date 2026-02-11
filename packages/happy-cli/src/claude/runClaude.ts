@@ -32,6 +32,7 @@ import { getProjectPath } from './utils/path';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RawJSONLinesSchema, type RawJSONLines } from './types';
+import { restoreStdin } from '@/utils/restoreStdin';
 
 /** JavaScript runtime to use for spawning Claude Code */
 export type JsRuntime = 'node' | 'bun'
@@ -652,6 +653,11 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
     // because the session is genuinely toast at that point.
     const cleanup = async (opts: { archive?: boolean } = { archive: true }) => {
         logger.debug(`[START] Received termination signal, cleaning up (archive=${opts.archive ?? true})...`);
+
+        // Restore terminal BEFORE any async work or process.exit() —
+        // signal handlers bypass finally blocks, so this is our only chance
+        // to prevent leaving the terminal in raw mode.
+        restoreStdin();
 
         try {
             // Update lifecycle state to archived before closing — only

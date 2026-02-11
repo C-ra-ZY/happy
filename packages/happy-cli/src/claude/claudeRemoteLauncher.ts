@@ -6,6 +6,7 @@ import React from "react";
 import { claudeRemote } from "./claudeRemote";
 import { PermissionHandler } from "./utils/permissionHandler";
 import { Future } from "@/utils/future";
+import { restoreStdin } from "@/utils/restoreStdin";
 import { SDKAssistantMessage, SDKMessage, SDKUserMessage } from "./sdk";
 import { formatClaudeMessageForInk } from "@/ui/messageFormatterInk";
 import { logger } from "@/ui/logger";
@@ -473,11 +474,17 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
         // Clean up permission handler
         permissionHandler.reset();
 
-        // Reset Terminal
+        // Reset Terminal — unmount Ink FIRST (it expects raw mode to still be
+        // active during teardown), then drain any in-flight stdin bytes, then
+        // restore stdin to a clean state for the next consumer.
         const t0 = Date.now();
         logger.debug(`[remote]: cleanup begin exitReason=${exitReason} hasInk=${!!inkInstance} rawMode=${(process.stdin as any).isRaw}`);
         if (inkInstance) {
-            inkInstance.unmount();
+            try {
+                inkInstance.unmount();
+            } catch {
+                // Ink unmount can throw if already unmounted
+            }
         }
         logger.debug(`[remote]: ink.unmount() done +${Date.now() - t0}ms rawMode=${(process.stdin as any).isRaw}`);
 
@@ -495,6 +502,10 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
                 logger.debug(`[remote]: stdin drain ${event.bytes}B / ${event.chunks} chunk(s) +${Date.now() - t0}ms`);
             },
         });
+
+        // Final restore: clears encoding state and orphaned "data" listeners that
+        // cleanupStdinAfterInk may not touch — defense-in-depth before the next consumer.
+        restoreStdin();
         logger.debug(`[remote]: cleanup done +${Date.now() - t0}ms rawMode=${(process.stdin as any).isRaw}`);
         messageBuffer.clear();
 
