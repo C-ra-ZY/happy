@@ -92,4 +92,5 @@ echo "On the mobile app, this machine should now show the above CLIs as detected
 echo "If something is missing on mobile, restart the daemon from your interactive shell:"
 echo "  happy daemon stop && happy daemon start"
 echo
-echo "To undo: npm unlink -g happy && npm i -g happy@latest"
+echo "To revert to the official happy from npm:"
+echo "  curl -fsSL https://raw.githubusercontent.com/C-ra-ZY/happy/local-fix-pr570/scripts/uninstall-from-fork.sh | bash"
