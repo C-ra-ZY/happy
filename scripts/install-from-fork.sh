@@ -57,7 +57,12 @@ if [[ -d "$INSTALL_DIR/.git" ]]; then
     cd "$INSTALL_DIR"
     git fetch origin --quiet
     git checkout "$BRANCH"
-    git pull --ff-only origin "$BRANCH"
+    if ! git pull --ff-only origin "$BRANCH"; then
+        err "Cannot fast-forward — the fork branch was likely force-pushed (e.g., rebased onto upstream)."
+        err "To force-resync (discards uncommitted changes in $INSTALL_DIR):"
+        err "  curl -fsSL https://raw.githubusercontent.com/C-ra-ZY/happy/$BRANCH/scripts/update-from-fork.sh | bash"
+        exit 1
+    fi
 else
     step "Clone fork"
     mkdir -p "$(dirname "$INSTALL_DIR")"
